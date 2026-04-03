@@ -1,0 +1,11 @@
+{
+  "id": "universe-1775093677931",
+  "name": "create endless fields of flour...",
+  "prompt": "create endless fields of flourishing - interpreted through the freedom of the wandering crest",
+  "timestamp": 1775093677931,
+  "shaderUrl": "/multiverses/universe-1775093677931.frag",
+  "parentUniverseId": "genesis",
+  "neighborUniverseIds": [
+    "universe-1775093671848"
+  ]
+}

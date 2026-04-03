@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Radio Free Utopia</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Azeret+Mono:wght@400;500;700;800&family=Special+Elite&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="./styles.css" />
+  </head>
+  <body>
+    <main class="radio-shell">
+      <section class="hero-grid">
+        <div class="hero-copy">
+          <p class="eyebrow">EARTH RADICAL CYBERPUNK PIRATE BAND</p>
+          <h1>Radio Free Utopia</h1>
+          <p class="manifesto">
+            An outlaw console for coded messages from the utopian noosphere:
+            static-drenched, fighter-pilot tense, and permanently aimed at planetary
+            liberation.
+          </p>
+
+          <div class="hero-actions">
+            <button type="button" class="signal-button" id="broadcast-toggle">
+              Start the Broadcast
+            </button>
+            <span class="status-chip" id="status-chip">AUDIO ARMED / USER ACTIVATE</span>
+          </div>
+        </div>
+
+        <div class="signal-stage">
+          <div class="dial-cluster">
+            <div class="dial-ring">
+              <div class="dial-core"></div>
+            </div>
+            <div class="dial-readout">
+              <span>UTOPIA NOOSPHERE RELAY</span>
+              <strong>13.77</strong>
+              <span>PHANTOM SHORTWAVE</span>
+            </div>
+          </div>
+
+          <div class="scope-frame">
+            <div class="scope-scanline"></div>
+            <div class="scope-grid"></div>
+            <div class="scope-wave" id="scope-wave"></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="data-strip" aria-label="Broadcast details">
+        <div class="data-item">
+          <span>Sector</span>
+          <strong>Earth / Great Lakes / Night Relay</strong>
+        </div>
+        <div class="data-item">
+          <span>Carrier</span>
+          <strong>13.77 MHz phantom band</strong>
+        </div>
+        <div class="data-item">
+          <span>Status</span>
+          <strong>Ceaseless insurgent utopian playback</strong>
+        </div>
+        <div class="data-item">
+          <span>Protocol</span>
+          <strong>Ciphered chorus + pilot-channel static</strong>
+        </div>
+      </section>
+
+      <section class="terminal-grid">
+        <article class="terminal-panel">
+          <p class="panel-label">Current Message</p>
+          <div class="terminal-output" id="terminal-output"></div>
+          <p class="voice-readout" id="voice-readout">
+            Voice channel: stand by for spoken relay
+          </p>
+        </article>
+
+        <article class="terminal-panel">
+          <p class="panel-label">Signal Integrity</p>
+          <div class="signal-meter">
+            <div class="signal-meter-track">
+              <div class="signal-meter-fill" id="signal-meter-fill"></div>
+            </div>
+            <p id="signal-meter-copy">61% decode confidence under static pressure</p>
+          </div>
+        </article>
+
+        <article class="terminal-panel wide">
+          <p class="panel-label">Decoded Fragments</p>
+          <ul class="fragment-list">
+            <li>Mutual aid constellations are transmitting beneath surveillance weather.</li>
+            <li>Soil, signal, and memory are being rerouted away from extraction.</li>
+            <li>Pilot-band urgency keeps the relay fast, mobile, and impossible to map.</li>
+            <li>The noosphere answers in loops so the dream never drops off the spectrum.</li>
+          </ul>
+        </article>
+      </section>
+    </main>
+
+    <script src="./radio.js"></script>
+  </body>
+</html>

@@ -1,0 +1,328 @@
+
+      const log = document.getElementById("log");
+      function logError(msg) { log.innerHTML += msg + "<br/>"; }
+      
+      const canvas = document.getElementById("c");
+      const gl = canvas.getContext("webgl", { alpha: false, antialias: true });
+      if (!gl) { logError("WebGL unavailable"); }
+      else {
+        const vsSource = `
+          attribute vec2 a_position;
+          void main() { gl_Position = vec4(a_position, 0.0, 1.0); }
+        `;
+        const fsSource = `
+/*--------------------------------------------------------------------------------------
+License CC0 - http://creativecommons.org/publicdomain/zero/1.0/
+To the extent possible under law, the author(s) have dedicated all copyright and related and neighboring rights to this software to the public domain worldwide. This software is distributed without any warranty.
+----------------------------------------------------------------------------------------
+^ This means do ANYTHING YOU WANT with this code. Because we are programmers, not lawyers.
+-Otavio Good
+*/
+
+#ifdef GL_ES
+precision highp float;
+#endif
+
+uniform vec2 u_resolution;
+uniform float u_time;
+
+#define iResolution vec3(u_resolution, 1.0)
+#define iTime u_time
+#define iFrame int(floor(u_time * 60.0))
+#define iMouse vec4(0.0)
+
+const int iChannel1 = 1;
+const int iChannel2 = 2;
+
+float compatHash21(vec2 p) {
+    return fract(sin(dot(p, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float compatNoise(vec2 p) {
+    vec2 i = floor(p);
+    vec2 f = fract(p);
+    vec2 u = f * f * (3.0 - 2.0 * f);
+    return mix(
+        mix(compatHash21(i), compatHash21(i + vec2(1.0, 0.0)), u.x),
+        mix(compatHash21(i + vec2(0.0, 1.0)), compatHash21(i + vec2(1.0, 1.0)), u.x),
+        u.y
+    );
+}
+
+vec3 compatTextureColor(vec2 uv) {
+    uv *= 6.0;
+    float base = compatNoise(uv);
+    float detail = compatNoise(uv * 2.7 + base * 1.3);
+    float ridges = abs(sin(uv.x * 3.5) * cos(uv.y * 4.0));
+    vec3 ocean = vec3(0.03, 0.09, 0.17);
+    vec3 land = vec3(0.22, 0.34, 0.21);
+    vec3 clouds = vec3(0.65, 0.78, 0.92);
+    vec3 col = mix(ocean, land, smoothstep(0.46, 0.68, base + detail * 0.15));
+    col = mix(col, clouds, smoothstep(0.82, 1.02, detail + ridges * 0.25));
+    col += ridges * 0.05;
+    return col;
+}
+
+vec4 sampleTexture(int channel, vec2 uv) {
+    if (channel == iChannel1) {
+        float v = compatNoise(uv * 18.0 + u_time * 0.05);
+        return vec4(vec3(v), 1.0);
+    }
+    return vec4(compatTextureColor(uv), 1.0);
+}
+
+#define ANTI_ALIAS_SIZE 0
+#define ROT_SPEED -0.05
+#define EARTH_ROT_SPEED 0.002
+const float earthRad = 6371.0;
+const vec3 earthPos = normalize(vec3(-6500,-6400,-3400)) * (earthRad + 408.0);
+
+float v31(vec3 a) { return a.x + a.y * 37.0 + a.z * 521.0; }
+float v21(vec2 a) { return a.x + a.y * 37.0; }
+float Hash11(float a) { return fract(sin(a)*10403.9); }
+float Hash21(vec2 uv) { float f = uv.x + uv.y * 37.0; return fract(sin(f)*104003.9); }
+vec2 Hash22(vec2 uv) { float f = uv.x + uv.y * 37.0; return fract(cos(f)*vec2(10003.579, 37049.7)); }
+vec2 Hash12(float f) { return fract(cos(f)*vec2(10003.579, 37049.7)); }
+float Hash1d(float u) { return fract(sin(u)*143.9); }
+float Hash2d(vec2 uv) { float f = uv.x + uv.y * 37.0; return fract(sin(f)*104003.9); }
+float Hash3d(vec3 uv) { float f = uv.x + uv.y * 37.0 + uv.z * 521.0; return fract(sin(f)*110003.9); }
+float mixP(float f0, float f1, float a) { return mix(f0, f1, a*a*(3.0-2.0*a)); }
+const vec2 zeroOne = vec2(0.0, 1.0);
+
+float noise2d(vec2 uv) {
+    vec2 fr = fract(uv.xy);
+    vec2 fl = floor(uv.xy);
+    float h00 = Hash2d(fl);
+    float h10 = Hash2d(fl + zeroOne.yx);
+    float h01 = Hash2d(fl + zeroOne);
+    float h11 = Hash2d(fl + zeroOne.yy);
+    return mixP(mixP(h00, h10, fr.x), mixP(h01, h11, fr.x), fr.y);
+}
+
+float noise(vec3 uv) {
+    vec3 fr = fract(uv.xyz);
+    vec3 fl = floor(uv.xyz);
+    float h000 = Hash3d(fl);
+    float h100 = Hash3d(fl + zeroOne.yxx);
+    float h010 = Hash3d(fl + zeroOne.xyx);
+    float h110 = Hash3d(fl + zeroOne.yyx);
+    float h001 = Hash3d(fl + zeroOne.xxy);
+    float h101 = Hash3d(fl + zeroOne.yxy);
+    float h011 = Hash3d(fl + zeroOne.xyy);
+    float h111 = Hash3d(fl + zeroOne.yyy);
+    return mixP(
+        mixP(mixP(h000, h100, fr.x), mixP(h010, h110, fr.x), fr.y),
+        mixP(mixP(h001, h101, fr.x), mixP(h011, h111, fr.x), fr.y),
+        fr.z
+    );
+}
+
+float saturate(float v) { return clamp(v, 0.0, 1.0); }
+vec2 saturate(vec2 v) { return clamp(v, 0.0, 1.0); }
+vec3 saturate(vec3 v) { return clamp(v, 0.0, 1.0); }
+vec4 saturate(vec4 v) { return clamp(v, 0.0, 1.0); }
+vec2 Rotate(vec2 p, float a) { float s = sin(a), c = cos(a); return mat2(c,-s,s,c) * p; }
+vec3 RotateX(vec3 p, float a) { float s = sin(a), c = cos(a); return vec3(p.x, c*p.y - s*p.z, s*p.y + c*p.z); }
+vec3 RotateY(vec3 p, float a) { float s = sin(a), c = cos(a); return vec3(c*p.x + s*p.z, p.y, -s*p.x + c*p.z); }
+vec3 RotateZ(vec3 p, float a) { float s = sin(a), c = cos(a); return vec3(c*p.x - s*p.y, s*p.x + c*p.y, p.z); }
+float sdBox(vec3 p, vec3 b) {
+    vec3 q = abs(p) - b;
+    return length(max(q,0.0)) + min(max(q.x,max(q.y,q.z)),0.0);
+}
+
+vec3 GetSunColorSmall(vec3 rayDir, vec3 sunDir, vec3 sunCol) {
+    vec3 localRay = normalize(rayDir);
+    float dist = 1.0 - (dot(localRay, sunDir) * 0.5 + 0.5);
+    float sunIntensity = 0.05 / max(dist, 0.0001);
+    sunIntensity = min(sunIntensity, 40000.0);
+    return sunCol * sunIntensity * 0.01;
+}
+
+vec4 tex3d(vec3 pos, vec3 normal) {
+    vec4 texX = sampleTexture(iChannel2, pos.yz*4.0);
+    vec4 texY = sampleTexture(iChannel2, pos.xz*4.0);
+    vec4 texZ = sampleTexture(iChannel2, pos.xy*4.0);
+    vec4 tex = mix(texX, texZ, abs(normal.z*normal.z));
+    tex = mix(tex, texY, abs(normal.y*normal.y));
+    return tex*tex;
+}
+
+struct RayHit {
+    vec3 normMin, normMax;
+    float tMin, tMax;
+    vec3 hitMin, hitMax;
+};
+
+const float bignum = 256.0*256.0*256.0;
+
+RayHit NewRayHit() {
+    RayHit rh;
+    rh.tMin = bignum;
+    rh.tMax = bignum;
+    rh.hitMin = vec3(0.0);
+    rh.hitMax = vec3(0.0);
+    rh.normMin = vec3(0.0);
+    rh.normMax = vec3(0.0);
+    return rh;
+}
+
+RayHit SphereIntersect2(vec3 pos, vec3 dir, vec3 spherePos, float rad) {
+    RayHit rh = NewRayHit();
+    vec3 delta = spherePos - pos;
+    float projdist = dot(delta, dir);
+    vec3 proj = dir * projdist;
+    vec3 bv = proj - delta;
+    float b = length(bv);
+    if (b > rad) return rh;
+    float x = sqrt(rad*rad - b*b);
+    rh.tMin = projdist - x;
+    if (rh.tMin < 0.0) {
+        rh.tMin = bignum;
+        return rh;
+    }
+    rh.tMax = projdist + x;
+    rh.hitMin = pos + dir * rh.tMin;
+    rh.hitMax = pos + dir * rh.tMax;
+    rh.normMin = normalize(rh.hitMin - spherePos);
+    rh.normMax = normalize(spherePos - rh.hitMax);
+    return rh;
+}
+
+vec3 GetEnvMapSpace(vec3 camPos, vec3 rayDir, vec3 sunDir, vec3 sunCol, float sunShadow) {
+    vec3 finalColor;
+    vec3 atmosphereColor = vec3(70.0, 150.0, 240.0)/400.0;
+    RayHit rh = SphereIntersect2(camPos, normalize(rayDir), earthPos, earthRad);
+    RayHit rh2 = SphereIntersect2(camPos, normalize(rayDir), earthPos, earthRad + 77.0);
+    if (rh.tMin < rh.tMax) {
+        vec3 intersection = rh.hitMin;
+        vec3 normal = rh.normMin;
+        vec3 rotNormal = RotateX(normal, iTime*EARTH_ROT_SPEED+0.05);
+        vec3 surface = vec3(0.01, 0.03, 0.081);
+        vec3 landTex = sampleTexture(iChannel2, rotNormal.xy * 0.25 + vec2(0.0, sin(rotNormal.z*2.0)*.25)).xyz;
+        vec3 land = landTex*vec3(0.19,0.22,0.16)*0.4;
+        vec3 landDry = landTex.yzx*vec3(0.31,0.26,0.22)*0.33;
+        land = mix(land, landDry, saturate(pow(landTex.y+.4,20.0)));
+        float landMask = landTex.y*1.3;
+        landMask += sampleTexture(iChannel2, rotNormal.yz * vec2(0.25,0.333)).y*1.3;
+        landMask = saturate(pow(landMask-0.1, 60.0));
+        surface = mix(surface, land, landMask);
+        float clouds = tex3d(rotNormal * 0.5, rotNormal).y *
+            tex3d((-rotNormal.xyz + vec3(sin(rotNormal.y*15.0)*.02)) * 3.75, rotNormal).z *
+            4.5;
+        surface += clouds;
+        float d = dot(normal, normalize(camPos - intersection));
+        float atmosphere = 1.0 - d;
+        atmosphere = pow(atmosphere, 3.0);
+        atmosphere = atmosphere * 0.9 + 0.1;
+        surface = mix(surface, atmosphereColor, atmosphere);
+        finalColor = surface;
+    } else {
+        finalColor = GetSunColorSmall(rayDir, sunDir, sunCol) * sunShadow;
+    }
+    if (rh2.tMin < rh2.tMax) {
+        vec3 a = rh2.hitMin;
+        vec3 b = rh2.hitMax;
+        if (rh.tMin < rh.tMax) b = rh.hitMin;
+        finalColor += pow(saturate(0.044 * atmosphereColor * exp(distance(a,b)*0.0018)), vec3(2.0));
+    }
+    return finalColor;
+}
+
+vec3 GetEnvMapSpaceGlossy(vec3 camPos, vec3 rayDir, vec3 sunDir, vec3 sunCol, float sunShadow) {
+    vec3 atmosphereColor = vec3(70.0, 130.0, 240.0)/355.0;
+    float dSun = max(0.0, dot(rayDir, sunDir));
+    dSun = pow(dSun,7.0);
+    float dEarth = dot(rayDir, normalize(earthPos)) * 0.5 + 0.5;
+    dEarth = pow(dEarth,3.0)*0.6;
+    return sunCol * dSun * sunShadow + atmosphereColor * dEarth;
+}
+
+vec4 texPanelsDense(vec2 uv, out vec3 texNormal) {
+    vec2 gv = fract(uv) - 0.5;
+    vec2 id = floor(uv);
+    float n = noise2d(id * 0.17);
+    float line = smoothstep(0.48, 0.45, max(abs(gv.x), abs(gv.y)));
+    float cell = smoothstep(0.2, 0.0, length(gv));
+    texNormal = normalize(vec3(gv, 0.35 + 0.3 * n));
+    vec3 base = mix(vec3(0.06, 0.15, 0.28), vec3(0.1, 0.25, 0.45), n);
+    return vec4(base + cell * 0.08 + line * 0.1, 0.55);
+}
+
+void SetRandomSeed(vec2 fragCoord, vec2 resolution, int frame) {}
+
+float SampleKey(float key) {
+    return step(0.5, sampleTexture(iChannel1, vec2(key, 0.25)).x);
+}
+
+vec3 RayTrace(vec2 fragCoord) {
+    vec2 uv = fragCoord.xy/iResolution.xy * 2.0 - 1.0;
+    vec3 sunDir = normalize(vec3(-0.3, 0.4, 0.9));
+    vec3 sunCol = vec3(1.2, 1.05, 0.95);
+    vec3 camPos = vec3(0.0, 1.5, -11.0 + sin(iTime*0.08) * 2.0);
+    vec3 rayVec = normalize(vec3(uv, 1.5));
+    rayVec = RotateY(rayVec, iTime * 0.08);
+    camPos = RotateY(camPos, iTime * 0.08);
+
+    vec3 pRot = RotateY(camPos + rayVec * 6.5, ROT_SPEED*iTime);
+    vec3 normal = normalize(vec3(
+        sin(pRot.x * 0.5),
+        cos(pRot.y * 0.4),
+        sin(pRot.z * 0.5)
+    ));
+    vec3 skyCol = vec3(.06,.1,.16);
+    float sunShadow = 1.0;
+    float ambient = 0.8;
+    float specular = 0.18;
+    vec3 texNormal;
+    vec4 panel = texPanelsDense(pRot.xz * 1.8, texNormal);
+    vec3 texColor = mix(vec3(0.2,0.22,0.25), panel.rgb, 0.85);
+    vec3 lightColor = sunCol * saturate(dot(sunDir, normal)) * sunShadow;
+    lightColor += (skyCol * saturate(dot(normal, normalize(earthPos)) *0.5+0.5))*pow(ambient, 0.25);
+    vec3 ref = reflect(rayVec, normalize(normal + texNormal * 0.25));
+    vec3 env = GetEnvMapSpaceGlossy(pRot, ref, sunDir, sunCol, sunShadow);
+    vec3 finalColor = texColor * lightColor;
+    finalColor = mix(finalColor, env, specular);
+    finalColor = mix(finalColor, vec3(.07,.13,.2), .08);
+    finalColor *= vec3(1.1) * saturate(1.1 - length(uv/1.2));
+    return clamp(finalColor, 0.0, 1.0);
+}
+
+void mainImage(out vec4 fragColor, in vec2 fragCoord) {
+    SetRandomSeed(fragCoord.xy, iResolution.xy, iFrame);
+    vec3 finalColor = RayTrace(fragCoord);
+    vec2 R = iResolution.xy;
+    vec2 uv = (2.*fragCoord - R) / R.y;
+    uv *= 18.0;
+    vec3 texNormal;
+    vec4 texColor = texPanelsDense(uv, texNormal);
+    vec3 tempLightDir = normalize(vec3((iMouse.xy-fragCoord)*0.003, 1.0));
+    float lightDot = dot(tempLightDir, normalize(texNormal.xyz));
+    finalColor += texColor.rgb * max(0.0, lightDot) * 0.12;
+    fragColor = vec4(sqrt(saturate(finalColor)),1.0);
+}
+
+void main() {
+    vec4 col = vec4(0.0);
+    mainImage(col, gl_FragCoord.xy);
+    gl_FragColor = col;
+}
+
+        `;
+        function createShader(type, source) {
+          const shader = gl.createShader(type);
+          gl.shaderSource(shader, source);
+          gl.compileShader(shader);
+          if (!gl.getShaderParameter(shader, gl.COMPILE_STATUS)) {
+            logError("Shader Error: " + gl.getShaderInfoLog(shader));
+            return null;
+          }
+          return shader;
+        }
+        
+        const vertexShader = createShader(gl.VERTEX_SHADER, vsSource);
+        const fragmentShader = createShader(gl.FRAGMENT_SHADER, fsSource);
+        if (vertexShader && fragmentShader) {
+            logError("SUCCESS!");
+        }
+      }
+    
