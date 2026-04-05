@@ -182,10 +182,41 @@ export function ExplorationUI() {
 
   if (isImmersed) {
     return (
-      <div className="ui-overlay pointer-events-none flex flex-col justify-end p-6 h-full z-10">
-        <div className="text-white/40 text-xs text-center mb-4 transition-opacity opacity-0 hover:opacity-100 pointer-events-auto cursor-default">
-          Press ESC to bring the UI back and exit immersion.
+      <div className="ui-overlay pointer-events-none absolute inset-0 flex flex-col justify-between p-8 z-10 w-full h-full">
+        {/* Top padding */}
+        <div className="flex-1" />
+        
+        {/* Bottom controls HUD (fade slightly so it doesn't obstruct view, but remains visible) */}
+        <div className="flex justify-between items-end w-full pb-8">
+          {/* Left Hand: Movement (Analogous to Left VR thumstick) */}
+          <div className="flex items-center gap-4 text-white/50 bg-black/20 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-2xl transition-all duration-1000 ease-out animate-in slide-in-from-bottom-8 opacity-70">
+            <div className="grid grid-cols-3 gap-1.5 text-center font-mono text-sm font-bold opacity-80">
+              <div /> <div className="border border-white/20 rounded shadow-inner px-2 py-1 bg-white/5">W</div> <div />
+              <div className="border border-white/20 rounded shadow-inner px-2 py-1 bg-white/5">A</div>
+              <div className="border border-white/20 rounded shadow-inner px-2 py-1 bg-white/5">S</div>
+              <div className="border border-white/20 rounded shadow-inner px-2 py-1 bg-white/5">D</div>
+            </div>
+            <div className="uppercase text-[10px] tracking-widest text-white/40 ml-2">Move</div>
+          </div>
+
+          {/* Center: Exit instruction (hidden until hover to keep screen clean) */}
+          <div className="text-white/30 text-[10px] text-center transition-opacity opacity-0 hover:opacity-100 pointer-events-auto cursor-default bg-black/40 px-6 py-2 rounded-full backdrop-blur-md border border-white/5 uppercase tracking-widest">
+            Press ESC to exit
+          </div>
+
+          {/* Right Hand: Look (Analogous to Right VR controller/head tracking) */}
+          <div className="flex items-center gap-4 text-white/50 bg-black/20 p-4 rounded-2xl backdrop-blur-md border border-white/10 shadow-2xl transition-all duration-1000 ease-out animate-in slide-in-from-bottom-8 opacity-70">
+            <div className="uppercase text-[10px] tracking-widest text-white/40 mr-2">Look</div>
+            <div className="flex flex-col items-center opacity-80">
+              <div className="w-5 h-8 border-2 border-white/20 rounded-full relative shadow-inner bg-white/5">
+                 <div className="w-[3px] h-[8px] bg-white/40 rounded-full absolute top-[3px] left-1/2 -translate-x-1/2" />
+              </div>
+            </div>
+          </div>
         </div>
+        
+        {/* Subtle Crosshair in the exact center to aid with Mouse looking */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-1 h-1 bg-white/30 rounded-full shadow-[0_0_10px_rgba(255,255,255,0.5)]" />
       </div>
     );
   }

@@ -44,7 +44,7 @@ export function Universe() {
   if (!shaderCode) return null;
 
   return (
-    <mesh>
+    <mesh frustumCulled={false}>
       {/* A large sphere encompassing the scene, inverted to see from inside */}
       <sphereGeometry args={[500, 64, 64]} />
       <shaderMaterial

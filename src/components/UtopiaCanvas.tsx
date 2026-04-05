@@ -37,7 +37,11 @@ function LocomotionWorld({ children }: { children: React.ReactNode }) {
     const camera = state.camera;
     camera.getWorldDirection(dir);
     dir.y = 0; // Lock movement to horizontal plane
-    dir.normalize();
+    if (dir.lengthSq() < 0.0001) {
+      dir.set(0, 0, -1);
+    } else {
+      dir.normalize();
+    }
     right.crossVectors(dir, up).normalize();
 
     let moveX = 0;
@@ -69,8 +73,10 @@ function LocomotionWorld({ children }: { children: React.ReactNode }) {
 
     if (moveX !== 0 || moveZ !== 0) {
       // By moving the world backwards relative to player intention, we simulate smooth player movement!
-      worldRef.current.position.addScaledVector(dir, -moveZ * speed);
-      worldRef.current.position.addScaledVector(right, -moveX * speed);
+      if (!isNaN(dir.x) && !isNaN(right.x)) {
+        worldRef.current.position.addScaledVector(dir, -moveZ * speed);
+        worldRef.current.position.addScaledVector(right, -moveX * speed);
+      }
     }
   });
 
@@ -82,6 +88,7 @@ const store = createXRStore();
 
 export function UtopiaCanvas() {
   const [mounted, setMounted] = useState(false);
+  const [isVR, setIsVR] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -89,11 +96,41 @@ export function UtopiaCanvas() {
 
   if (!mounted) return null; // Avoid SSR hydration mismatches
 
+  const handleEnterVR = async () => {
+    try {
+      const supported = await navigator.xr?.isSessionSupported('immersive-vr');
+      if (supported) {
+        setIsVR(true);
+        setTimeout(() => store.enterVR(), 100);
+      } else {
+        // Fallback for laptop display: go fullscreen
+        if (document.documentElement.requestFullscreen) {
+          document.documentElement.requestFullscreen().catch(console.error);
+        }
+      }
+    } catch (e) {
+      console.warn("XR Support check failed", e);
+      if (document.documentElement.requestFullscreen) {
+        document.documentElement.requestFullscreen().catch(console.error);
+      }
+    }
+  };
+
+  const SceneContent = (
+    <Suspense fallback={null}>
+      <LocomotionWorld>
+         <ambientLight intensity={1} />
+        <Universe />
+        <Portals />
+      </LocomotionWorld>
+    </Suspense>
+  );
+
   return (
     <>
       <div className="absolute bottom-4 left-4 z-50">
         <button
-          onClick={() => store.enterVR()}
+          onClick={handleEnterVR}
           className="modern-button"
         >
           Enter VR
@@ -101,18 +138,14 @@ export function UtopiaCanvas() {
       </div>
       
       <Canvas style={{ width: '100vw', height: '100vh', display: 'block' }} camera={{ position: [0, 1.6, 0] }}>
-        <XR store={store}>
-          <Suspense fallback={null}>
-            <LocomotionWorld>
-               <ambientLight intensity={1} />
-              <Universe />
-              <Portals />
-            </LocomotionWorld>
-          </Suspense>
-          
-          {/* Controls for non-VR fallback; requires user to click into screen to steal cursor */}
-          <PointerLockControls />
-        </XR>
+        <PointerLockControls makeDefault />
+        {isVR ? (
+          <XR store={store}>
+            {SceneContent}
+          </XR>
+        ) : (
+          SceneContent
+        )}
       </Canvas>
     </>
   );
