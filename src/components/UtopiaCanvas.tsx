@@ -6,7 +6,6 @@ import { Suspense, useState, useEffect, useRef } from 'react';
 import { Universe } from './Universe';
 import { Portals } from './Portal';
 import { PointerLockControls, OrbitControls } from '@react-three/drei';
-
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
 
@@ -106,8 +105,8 @@ export function UtopiaCanvas() {
           <Suspense fallback={null}>
             <LocomotionWorld>
                <ambientLight intensity={1} />
-               <Universe />
-               <Portals />
+              <Universe />
+              <Portals />
             </LocomotionWorld>
           </Suspense>
           
