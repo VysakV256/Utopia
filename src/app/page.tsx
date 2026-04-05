@@ -2,6 +2,7 @@
 
 import type { CSSProperties } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
+import Link from 'next/link';
 
 const transmissions = [
   'NOOSPHERE BURST 01 // mutual aid cells are awake beneath the storm grid',
@@ -317,6 +318,9 @@ export default function Home() {
             >
               {isBroadcasting ? 'Silence the Channel' : 'Start the Broadcast'}
             </button>
+            <Link href="/utopia" className="signal-button" style={{ color: 'var(--accent)', borderColor: 'var(--accent)' }}>
+              Enter the Noosphere
+            </Link>
             <span className="status-chip">
               {isBroadcasting ? 'LIVE STATIC / CHANNEL OPEN' : 'AUDIO ARMED / USER ACTIVATE'}
             </span>

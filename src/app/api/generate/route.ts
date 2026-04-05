@@ -35,6 +35,7 @@ VARYINGS & UNIFORMS AVAILABLE:
 - varying vec3 vPosition;
 - uniform float time; // Timestamp in seconds
 - uniform vec2 resolution; // Screen resolution
+- uniform float uAudio; // User microphone amplitude (0.0 to 1.0+)
 
 CRITICAL INSTRUCTIONS:
 1. ONLY return the raw GLSL fragment shader code. Do not wrap it in markdown block quotes (e.g. \`\`\`glsl).
@@ -45,12 +46,14 @@ CRITICAL INSTRUCTIONS:
 6. SCALING: Make sure any stars, planets, or shapes you generate are LARGE enough to be seen! 
    Do NOT use microscopic scales (e.g., starRadius = 0.005 on a 500-unit sphere will span 0.3 pixels and visibly disappear into a black screen). Use sizes like 0.05 or larger.
 7. BRIGHTNESS: Make sure your ambient background colors are at least vec3(0.1, 0.1, 0.15) so the scene isn't pitch black.
+8. AUDIO REACTIVITY: You MUST incorporate the 'uAudio' uniform to modulate colors, wave sizes, pulsing, or brightness so the universe reacts dynamically to the user's voice intensity.
 
 Example minimal output:
 varying vec2 vUv;
 uniform float time;
+uniform float uAudio;
 void main() {
-    gl_FragColor = vec4(vUv, 0.5 + 0.5 * sin(time), 1.0);
+    gl_FragColor = vec4(vUv, 0.5 + 0.5 * sin(time) + uAudio, 1.0);
 }
 `;
 

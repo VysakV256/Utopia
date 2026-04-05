@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from 'react';
 import { useMultiverseStore } from '@/store/multiverse';
+import { audioManager } from '@/lib/audioManager';
 
 import { ShaderThumbnail } from './ShaderThumbnail';
 
@@ -54,9 +55,13 @@ export function ExplorationUI() {
       return;
     }
 
+    // Start audio reactivity for shaders
+    audioManager.start();
+
     const SpeechRecognition = (window as any).webkitSpeechRecognition;
     const recognition = new SpeechRecognition();
-    recognition.continuous = false;
+    // Enable continuous listening
+    recognition.continuous = true;
     recognition.interimResults = true;
     recognition.lang = 'en-US';
 
@@ -66,19 +71,40 @@ export function ExplorationUI() {
     };
 
     recognition.onresult = (event: any) => {
-      const transcript = Array.from(event.results)
-        .map((result: any) => result[0].transcript)
-        .join('');
-      setPrompt(transcript);
+      let finalTranscript = '';
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      const currentText = finalTranscript || interimTranscript;
+      if (currentText) {
+        setPrompt(currentText);
+      }
+
+      // Automatically generate when a sentence/burst is finalized
+      if (finalTranscript.trim().length > 0) {
+        // We use the store's current state to prevent massively spamming the API while generating
+        if (!useMultiverseStore.getState().isGenerating) {
+          generateUniverse(finalTranscript.trim());
+        }
+      }
     };
 
     recognition.onerror = (event: any) => {
       setError(`Voice error: ${event.error}`);
       setIsListening(false);
+      audioManager.stop();
     };
 
     recognition.onend = () => {
       setIsListening(false);
+      audioManager.stop();
     };
 
     recognitionRef.current = recognition;
@@ -90,27 +116,35 @@ export function ExplorationUI() {
       recognitionRef.current.stop();
       setIsListening(false);
     }
+    audioManager.stop();
   };
 
-  const generateUniverse = async () => {
-    if (!prompt.trim() || isGenerating) return;
+  const generateUniverse = async (textOverride?: string) => {
+    const textToGenerate = textOverride || prompt;
+    if (!textToGenerate.trim() || isGenerating) return;
 
     setIsGenerating(true);
     setError(null);
 
+    // If using voice, spawn only 1 facet at a time to prevent rapid visual clutter.
+    // If manual text entry, spawn 3 facets as before.
+    const isVoiceTrigger = !!textOverride;
+    
     try {
-      const facets = [
-        "the freedom of the infinite peaks",
-        "the freedom of the mountain heart",
-        "the freedom of the wandering crest"
-      ];
+      const facets = isVoiceTrigger 
+        ? ["the freedom of the infinite peaks"] 
+        : [
+            "the freedom of the infinite peaks",
+            "the freedom of the mountain heart",
+            "the freedom of the wandering crest"
+          ];
 
       const promises = facets.map(facet => 
         fetch('/api/generate', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
-            prompt: `${prompt} - interpreted through ${facet}`,
+            prompt: `${textToGenerate} - interpreted through ${facet}`,
             parentUniverseId: currentUniverseId
           }),
         }).then(async res => {
@@ -124,7 +158,7 @@ export function ExplorationUI() {
 
       // Add each generated universe state to the store
       // Since addUniverse pushes new items to the top, doing foreach works perfectly 
-      // and spawns 3 child portals around the user
+      // and spawns portals around the user
       results.forEach(data => {
         addUniverse({
           id: data.id,
@@ -230,7 +264,7 @@ export function ExplorationUI() {
         
         <button 
           className="modern-button w-full"
-          onClick={generateUniverse}
+          onClick={() => generateUniverse()}
           disabled={!prompt.trim() || isGenerating}
         >
           {isGenerating ? (

@@ -4,6 +4,7 @@ import { useRef, useMemo } from 'react';
 import { useFrame } from '@react-three/fiber';
 import * as THREE from 'three';
 import { useMultiverseStore } from '@/store/multiverse';
+import { audioManager } from '@/lib/audioManager';
 
 const vertexShader = `
 varying vec2 vUv;
@@ -27,7 +28,8 @@ export function Universe() {
   const uniforms = useMemo(
     () => ({
       time: { value: 0.0 },
-      resolution: { value: new THREE.Vector2(1, 1) } // Simplified, can be hooked to useThree
+      resolution: { value: new THREE.Vector2(1, 1) }, // Simplified, can be hooked to useThree
+      uAudio: { value: 0.0 }
     }),
     []
   );
@@ -35,6 +37,7 @@ export function Universe() {
   useFrame((state) => {
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = state.clock.getElapsedTime();
+      materialRef.current.uniforms.uAudio.value = audioManager.getAmplitude();
     }
   });
 
