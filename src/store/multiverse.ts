@@ -33,7 +33,7 @@ void main() {
   vec2 uv = vUv - 0.5;
   float d = length(uv);
   vec3 baseColor = vec3(0.1 + uAudio * 0.2, 0.2 + uAudio * 0.5, 0.4 + uAudio);
-  vec3 col = baseColor + (0.3 + uAudio * 0.4) * cos(time * (1.0 + uAudio) + d * (10.0 - uAudio * 5.0) + vec3(0, 2, 4));
+  vec3 col = baseColor + (0.3 + uAudio * 0.4) * cos(vec3(time * (1.0 + uAudio) + d * (10.0 - uAudio * 5.0)) + vec3(0.0, 2.0, 4.0));
   gl_FragColor = vec4(col, 1.0);
 }
 `;

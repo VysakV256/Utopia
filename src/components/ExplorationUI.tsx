@@ -191,30 +191,25 @@ export function ExplorationUI() {
   }
 
   return (
-    <div className="ui-overlay pointer-events-none flex flex-col justify-between h-full p-6 z-10">
-      <header className="glass-panel text-center max-w-lg mx-auto w-full pointer-events-auto shadow-xl">
-        <h1 className="text-3xl gradient-text font-black mb-2 animate-pulse-slow tracking-tight">UTOPIA</h1>
-        <p className="text-muted text-sm font-medium">Create and traverse immersive realities.</p>
-        
-        <div className="flex gap-2 w-full mt-5">
-          <button 
-            onClick={() => setShowPortal(!showPortal)} 
-            className="modern-button secondary flex-1 text-xs font-bold tracking-wide uppercase transition-all"
-          >
-            {showPortal ? '× Close Portals' : '🌌 View Universes'}
-          </button>
-          <button 
-            onClick={toggleImmersion} 
-            className="modern-button flex-1 text-xs font-bold tracking-wide uppercase transition-all"
-          >
-            <span className="flex items-center justify-center gap-2">👁️ Immerse (Fullscreen)</span>
-          </button>
-        </div>
-      </header>
+    <div className="ui-overlay pointer-events-none relative h-full w-full p-6 z-10">
+      <div className="pointer-events-auto absolute left-6 top-6 flex gap-2">
+        <button 
+          onClick={() => setShowPortal(!showPortal)} 
+          className="modern-button secondary text-xs font-bold tracking-wide uppercase transition-all"
+        >
+          {showPortal ? 'Close Portals' : 'View Universes'}
+        </button>
+        <button 
+          onClick={toggleImmersion} 
+          className="modern-button text-xs font-bold tracking-wide uppercase transition-all"
+        >
+          Immerse
+        </button>
+      </div>
       
       {/* Portal Drawer for saved universes */}
       {showPortal && (
-        <div className="glass-panel max-w-lg mx-auto mt-4 mb-auto w-full max-h-[50vh] overflow-y-auto pointer-events-auto flex flex-col gap-3 shadow-2xl p-4 custom-scrollbar">
+        <div className="glass-panel pointer-events-auto absolute left-6 top-24 w-[min(28rem,calc(100vw-3rem))] max-h-[50vh] overflow-y-auto flex flex-col gap-3 shadow-2xl p-4 custom-scrollbar">
           {universes.map((u) => (
             <button
               key={u.id}
@@ -234,7 +229,7 @@ export function ExplorationUI() {
         </div>
       )}
 
-      <div className="glass-panel max-w-lg mx-auto mb-10 w-full flex flex-col gap-4 pointer-events-auto mt-auto">
+      <div className="glass-panel pointer-events-auto absolute bottom-6 left-1/2 flex w-[min(34rem,calc(100vw-3rem))] -translate-x-1/2 flex-col gap-4 p-4 shadow-2xl">
         
         {error && (
           <div className="text-red-400 text-sm bg-red-900/40 p-3 rounded-lg border border-red-500/50">

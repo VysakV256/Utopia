@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Radio Free Utopia",
+  title: "Utopia",
   description: "An old-school earth radical cyberpunk pirate radio transmitting coded messages from the utopian noosphere.",
 };
 
