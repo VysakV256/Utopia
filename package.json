@@ -6,7 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "eslint"
+    "lint": "eslint",
+    "shadertoy:archive": "node ./scripts/save-shadertoy-shaders.mjs"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",

@@ -1,5 +1,33 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
 
+## Shadertoy Archive Script
+
+This repo now includes a CLI archiver at `scripts/save-shadertoy-shaders.mjs` for downloading Shadertoy shaders and saving them into a structured local archive with normalized metadata plus the raw API payload.
+
+It is designed to archive every shader that your Shadertoy API key can access through the official API, which is the safest bulk-download path Shadertoy exposes.
+
+Example usage:
+
+```bash
+cd /Users/vysak/Explorations/Utopia
+export SHADERTOY_API_KEY=your_app_key
+
+# archive every shader your key can access
+npm run shadertoy:archive -- --all --resume
+
+# archive a query subset
+npm run shadertoy:archive -- --query ocean --limit 25
+```
+
+Output is written to `data/shadertoy/` by default in this structure:
+
+```text
+data/shadertoy/<author>/<yyyy-mm-dd>_<title>_<id>/
+  metadata.json
+  raw.json
+  passes/
+```
+
 ## Getting Started
 
 First, run the development server:
