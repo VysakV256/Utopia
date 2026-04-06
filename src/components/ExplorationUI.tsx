@@ -7,23 +7,23 @@ import { audioManager } from '@/lib/audioManager';
 import { ShaderThumbnail } from './ShaderThumbnail';
 
 export function ExplorationUI() {
-  const [prompt, setPrompt] = useState('');
-  const [isListening, setIsListening] = useState(false);
-  const [showPortal, setShowPortal] = useState(false);
-  const [isImmersed, setIsImmersed] = useState(false);
-  
-  const addUniverse = useMultiverseStore((state) => state.addUniverse);
+  const isListening = useMultiverseStore((state) => state.isListening);
+  const prompt = useMultiverseStore((state) => state.voicePrompt);
+  const setPrompt = useMultiverseStore((state) => state.setVoicePrompt);
+  const startVoiceInput = useMultiverseStore((state) => state.startVoiceInput);
+  const stopVoiceInput = useMultiverseStore((state) => state.stopVoiceInput);
+  const generateUniverse = useMultiverseStore((state) => state.generateUniverse);
+
   const universes = useMultiverseStore((state) => state.universes);
   const currentUniverseId = useMultiverseStore((state) => state.currentUniverseId);
   const setCurrentUniverse = useMultiverseStore((state) => state.setCurrentUniverse);
   const fetchUniverses = useMultiverseStore((state) => state.fetchUniverses);
   
   const isGenerating = useMultiverseStore((state) => state.isGenerating);
-  const setIsGenerating = useMultiverseStore((state) => state.setIsGenerating);
   const error = useMultiverseStore((state) => state.error);
-  const setError = useMultiverseStore((state) => state.setError);
 
-  const recognitionRef = useRef<any>(null);
+  const [showPortal, setShowPortal] = useState(false);
+  const [isImmersed, setIsImmersed] = useState(false);
 
   // Fetch all saved multiverses on mount
   useEffect(() => {
@@ -49,136 +49,7 @@ export function ExplorationUI() {
     }
   };
 
-  const startVoiceInput = () => {
-    if (!('webkitSpeechRecognition' in window)) {
-      setError('Voice recognition not supported in this browser.');
-      return;
-    }
 
-    // Start audio reactivity for shaders
-    audioManager.start();
-
-    const SpeechRecognition = (window as any).webkitSpeechRecognition;
-    const recognition = new SpeechRecognition();
-    // Enable continuous listening
-    recognition.continuous = true;
-    recognition.interimResults = true;
-    recognition.lang = 'en-US';
-
-    recognition.onstart = () => {
-      setIsListening(true);
-      setError(null);
-    };
-
-    recognition.onresult = (event: any) => {
-      let finalTranscript = '';
-      let interimTranscript = '';
-      
-      for (let i = event.resultIndex; i < event.results.length; ++i) {
-        if (event.results[i].isFinal) {
-          finalTranscript += event.results[i][0].transcript;
-        } else {
-          interimTranscript += event.results[i][0].transcript;
-        }
-      }
-      
-      const currentText = finalTranscript || interimTranscript;
-      if (currentText) {
-        setPrompt(currentText);
-      }
-
-      // Automatically generate when a sentence/burst is finalized
-      if (finalTranscript.trim().length > 0) {
-        // We use the store's current state to prevent massively spamming the API while generating
-        if (!useMultiverseStore.getState().isGenerating) {
-          generateUniverse(finalTranscript.trim());
-        }
-      }
-    };
-
-    recognition.onerror = (event: any) => {
-      setError(`Voice error: ${event.error}`);
-      setIsListening(false);
-      audioManager.stop();
-    };
-
-    recognition.onend = () => {
-      setIsListening(false);
-      audioManager.stop();
-    };
-
-    recognitionRef.current = recognition;
-    recognition.start();
-  };
-
-  const stopVoiceInput = () => {
-    if (recognitionRef.current) {
-      recognitionRef.current.stop();
-      setIsListening(false);
-    }
-    audioManager.stop();
-  };
-
-  const generateUniverse = async (textOverride?: string) => {
-    const textToGenerate = textOverride || prompt;
-    if (!textToGenerate.trim() || isGenerating) return;
-
-    setIsGenerating(true);
-    setError(null);
-
-    // If using voice, spawn only 1 facet at a time to prevent rapid visual clutter.
-    // If manual text entry, spawn 3 facets as before.
-    const isVoiceTrigger = !!textOverride;
-    
-    try {
-      const facets = isVoiceTrigger 
-        ? ["the freedom of the infinite peaks"] 
-        : [
-            "the freedom of the infinite peaks",
-            "the freedom of the mountain heart",
-            "the freedom of the wandering crest"
-          ];
-
-      const promises = facets.map(facet => 
-        fetch('/api/generate', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            prompt: `${textToGenerate} - interpreted through ${facet}`,
-            parentUniverseId: currentUniverseId
-          }),
-        }).then(async res => {
-          const data = await res.json();
-          if (!res.ok) throw new Error(data.error || 'Failed to generate');
-          return data;
-        })
-      );
-
-      const results = await Promise.all(promises);
-
-      // Add each generated universe state to the store
-      // Since addUniverse pushes new items to the top, doing foreach works perfectly 
-      // and spawns portals around the user
-      results.forEach(data => {
-        addUniverse({
-          id: data.id,
-          name: data.name,
-          prompt: data.prompt,
-          shader: data.shader,
-          timestamp: data.timestamp,
-          parentUniverseId: data.parentUniverseId,
-          neighborUniverseIds: data.neighborUniverseIds,
-        });
-      });
-
-      setPrompt('');
-
-    } catch (err: any) {
-      setError(err.message);
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   if (isImmersed) {
     return (

@@ -5,6 +5,8 @@ import { useFrame } from '@react-three/fiber';
 import { useRef, useState } from 'react';
 import * as THREE from 'three';
 
+import { audioManager } from '@/lib/audioManager';
+
 function Portal({ universe, position, ringColor = "var(--accent)" }: { universe: any; position: [number, number, number], ringColor?: string }) {
   const setCurrentUniverse = useMultiverseStore((state) => state.setCurrentUniverse);
   const meshRef = useRef<THREE.Mesh>(null);
@@ -21,6 +23,7 @@ function Portal({ universe, position, ringColor = "var(--accent)" }: { universe:
     }
     if (materialRef.current) {
       materialRef.current.uniforms.time.value = state.clock.getElapsedTime();
+      materialRef.current.uniforms.uAudio.value = audioManager.getAmplitude();
     }
   });
 
@@ -49,7 +52,11 @@ function Portal({ universe, position, ringColor = "var(--accent)" }: { universe:
           }
         `}
         fragmentShader={universe.shader}
-        uniforms={{ time: { value: 0 } }}
+        uniforms={{ 
+          time: { value: 0 },
+          uAudio: { value: 0 },
+          resolution: { value: new THREE.Vector2(1, 1) } 
+        }}
       />
       
       {/* Highlight ring on hover */}

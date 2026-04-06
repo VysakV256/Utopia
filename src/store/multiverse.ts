@@ -1,4 +1,5 @@
 import { create } from 'zustand';
+import { audioManager } from '@/lib/audioManager';
 
 // Basic structure of a Universe
 export interface Universe {
@@ -23,7 +24,16 @@ interface MultiverseState {
   setIsGenerating: (generating: boolean) => void;
   error: string | null;
   setError: (err: string | null) => void;
+  isListening: boolean;
+  voicePrompt: string;
+  setVoicePrompt: (prompt: string) => void;
+  startVoiceInput: () => void;
+  stopVoiceInput: () => void;
+  generateUniverse: (promptOverride?: string) => Promise<void>;
 }
+
+// Keep a global ref to speech recognition to stop it from store methods.
+let recognitionRef: any = null;
 
 const DEFAULT_SHADER = `
 varying vec2 vUv;
@@ -46,11 +56,13 @@ const INITIAL_UNIVERSE: Universe = {
   timestamp: Date.now(),
 };
 
-export const useMultiverseStore = create<MultiverseState>((set) => ({
+export const useMultiverseStore = create<MultiverseState>((set, get) => ({
   universes: [INITIAL_UNIVERSE],
   currentUniverseId: 'genesis',
   isGenerating: false,
   error: null,
+  isListening: false,
+  voicePrompt: '',
 
   addUniverse: (universe) => 
     set((state) => ({ 
@@ -86,5 +98,128 @@ export const useMultiverseStore = create<MultiverseState>((set) => ({
     set(() => ({ isGenerating: generating })),
 
   setError: (error) => 
-    set(() => ({ error }))
+    set(() => ({ error })),
+
+  setVoicePrompt: (prompt) => set(() => ({ voicePrompt: prompt })),
+
+  startVoiceInput: () => {
+    const state = get();
+    if (!('webkitSpeechRecognition' in window)) {
+      state.setError('Voice recognition not supported in this browser.');
+      return;
+    }
+
+    audioManager.start();
+
+    const SpeechRecognition = (window as any).webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.continuous = true;
+    recognition.interimResults = true;
+    recognition.lang = 'en-US';
+
+    recognition.onstart = () => {
+      set({ isListening: true, error: null, voicePrompt: '' });
+    };
+
+    recognition.onresult = (event: any) => {
+      let finalTranscript = '';
+      let interimTranscript = '';
+      
+      for (let i = event.resultIndex; i < event.results.length; ++i) {
+        if (event.results[i].isFinal) {
+          finalTranscript += event.results[i][0].transcript;
+        } else {
+          interimTranscript += event.results[i][0].transcript;
+        }
+      }
+      
+      const currentText = finalTranscript || interimTranscript;
+      if (currentText) {
+        set({ voicePrompt: currentText });
+      }
+
+      // Automatically auto-gen once speech finalizes
+      if (finalTranscript.trim().length > 0 && !get().isGenerating) {
+        get().generateUniverse(finalTranscript.trim());
+      }
+    };
+
+    recognition.onerror = (event: any) => {
+      set({ error: `Voice error: ${event.error}`, isListening: false });
+      audioManager.stop();
+    };
+
+    recognition.onend = () => {
+      set({ isListening: false });
+      audioManager.stop();
+    };
+
+    recognitionRef = recognition;
+    recognition.start();
+  },
+
+  stopVoiceInput: () => {
+    if (recognitionRef) {
+      recognitionRef.stop();
+      recognitionRef = null;
+    }
+    set({ isListening: false });
+    audioManager.stop();
+  },
+
+  generateUniverse: async (promptOverride?: string) => {
+    const state = get();
+    const promptToUse = promptOverride || state.voicePrompt;
+    if (!promptToUse.trim() || state.isGenerating) return;
+
+    set({ isGenerating: true, error: null });
+
+    const isVoiceTrigger = !!promptOverride;
+    
+    try {
+      const facets = isVoiceTrigger 
+        ? ["the freedom of the infinite peaks"] 
+        : [
+            "the freedom of the infinite peaks",
+            "the freedom of the mountain heart",
+            "the freedom of the wandering crest"
+          ];
+
+      const promises = facets.map(facet => 
+        fetch('/api/generate', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            prompt: `${promptToUse} - interpreted through ${facet}`,
+            parentUniverseId: state.currentUniverseId
+          }),
+        }).then(async res => {
+          const data = await res.json();
+          if (!res.ok) throw new Error(data.error || 'Failed to generate');
+          return data;
+        })
+      );
+
+      const results = await Promise.all(promises);
+
+      results.forEach(data => {
+        state.addUniverse({
+          id: data.id,
+          name: data.name,
+          prompt: data.prompt,
+          shader: data.shader,
+          timestamp: data.timestamp,
+          parentUniverseId: data.parentUniverseId,
+          neighborUniverseIds: data.neighborUniverseIds,
+        });
+      });
+
+      set({ voicePrompt: '' });
+
+    } catch (err: any) {
+      set({ error: err.message });
+    } finally {
+      set({ isGenerating: false });
+    }
+  }
 }));

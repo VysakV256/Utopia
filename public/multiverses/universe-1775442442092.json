@@ -1,0 +1,12 @@
+{
+  "id": "universe-1775442442092",
+  "name": "Infinite exhort of Dawn - inte...",
+  "prompt": "Infinite exhort of Dawn - interpreted through the freedom of the infinite peaks",
+  "timestamp": 1775442442092,
+  "shaderUrl": "/multiverses/universe-1775442442092.frag",
+  "parentUniverseId": "genesis",
+  "neighborUniverseIds": [
+    "universe-1774836322700",
+    "universe-1775093671848"
+  ]
+}

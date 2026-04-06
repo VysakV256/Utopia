@@ -8,16 +8,27 @@ import { Portals } from './Portal';
 import { PointerLockControls, OrbitControls } from '@react-three/drei';
 import { useFrame, useThree } from '@react-three/fiber';
 import * as THREE from 'three';
+import { useMultiverseStore } from '@/store/multiverse';
 
 // Universal Locomotion component handling WASD and VR Thumsticks
 function LocomotionWorld({ children }: { children: React.ReactNode }) {
   const worldRef = useRef<THREE.Group>(null);
   const keys = useRef<Record<string, boolean>>({});
-  const { gl } = useThree();
+  const { gl, camera } = useThree();
 
   useEffect(() => {
-    const onKeyDown = (e: KeyboardEvent) => (keys.current[e.code] = true);
-    const onKeyUp = (e: KeyboardEvent) => (keys.current[e.code] = false);
+    const onKeyDown = (e: KeyboardEvent) => {
+      keys.current[e.code] = true;
+      if (e.code === 'Space' && !e.repeat && document.activeElement?.tagName !== 'INPUT') {
+        useMultiverseStore.getState().startVoiceInput();
+      }
+    };
+    const onKeyUp = (e: KeyboardEvent) => {
+      keys.current[e.code] = false;
+      if (e.code === 'Space') {
+        useMultiverseStore.getState().stopVoiceInput();
+      }
+    };
     window.addEventListener('keydown', onKeyDown);
     window.addEventListener('keyup', onKeyUp);
     return () => {
@@ -25,6 +36,8 @@ function LocomotionWorld({ children }: { children: React.ReactNode }) {
       window.removeEventListener('keyup', onKeyUp);
     };
   }, []);
+
+  const triggerPressedRef = useRef(false);
 
   useFrame((state, delta) => {
     if (!worldRef.current) return;
@@ -54,7 +67,7 @@ function LocomotionWorld({ children }: { children: React.ReactNode }) {
     if (kd['KeyA']) moveX -= 1;
     if (kd['KeyD']) moveX += 1;
 
-    // VR Joysticks Locomotion (reads raw WebXR gamepad inputs)
+    // VR Joysticks Locomotion and Input
     const session = gl.xr.getSession();
     if (session && session.inputSources) {
       for (const source of session.inputSources) {
@@ -68,6 +81,18 @@ function LocomotionWorld({ children }: { children: React.ReactNode }) {
         // Deadzone > 0.1
         if (typeof lx === 'number' && Math.abs(lx) > 0.1) moveX += lx;
         if (typeof ly === 'number' && Math.abs(ly) > 0.1) moveZ -= ly; 
+        
+        // Voice trigger logic (primary trigger usually buttons[0])
+        const triggerBtn = source.gamepad.buttons[0];
+        if (triggerBtn) {
+          if (triggerBtn.pressed && !triggerPressedRef.current) {
+            triggerPressedRef.current = true;
+            useMultiverseStore.getState().startVoiceInput();
+          } else if (!triggerBtn.pressed && triggerPressedRef.current) {
+            triggerPressedRef.current = false;
+            useMultiverseStore.getState().stopVoiceInput();
+          }
+        }
       }
     }
 
@@ -96,6 +121,15 @@ export function UtopiaCanvas() {
 
   if (!mounted) return null; // Avoid SSR hydration mismatches
 
+  const handleEnterDesktop = () => {
+    setIsVR(false);
+    if (document.documentElement.requestFullscreen) {
+      document.documentElement.requestFullscreen().catch(console.error);
+    }
+    const canvas = document.querySelector('canvas');
+    if (canvas) canvas.requestPointerLock();
+  };
+
   const handleEnterVR = async () => {
     try {
       const supported = await navigator.xr?.isSessionSupported('immersive-vr');
@@ -103,16 +137,12 @@ export function UtopiaCanvas() {
         setIsVR(true);
         setTimeout(() => store.enterVR(), 100);
       } else {
-        // Fallback for laptop display: go fullscreen
-        if (document.documentElement.requestFullscreen) {
-          document.documentElement.requestFullscreen().catch(console.error);
-        }
+        console.warn("VR not supported on this device. Starting desktop mode.");
+        handleEnterDesktop();
       }
     } catch (e) {
       console.warn("XR Support check failed", e);
-      if (document.documentElement.requestFullscreen) {
-        document.documentElement.requestFullscreen().catch(console.error);
-      }
+      handleEnterDesktop();
     }
   };
 
@@ -128,17 +158,23 @@ export function UtopiaCanvas() {
 
   return (
     <>
-      <div className="absolute bottom-4 left-4 z-50">
+      <div className="absolute bottom-4 left-4 z-50 flex gap-4">
         <button
           onClick={handleEnterVR}
           className="modern-button"
         >
           Enter VR
         </button>
+        <button
+          onClick={handleEnterDesktop}
+          className="modern-button"
+        >
+          Desktop (M&K)
+        </button>
       </div>
       
       <Canvas style={{ width: '100vw', height: '100vh', display: 'block' }} camera={{ position: [0, 1.6, 0] }}>
-        <PointerLockControls makeDefault />
+        {!isVR && <PointerLockControls makeDefault />}
         {isVR ? (
           <XR store={store}>
             {SceneContent}
